@@ -45,6 +45,15 @@
       "Read(**/.env.*)",
       "Read(~/.ssh/**)",
       "Read(~/.aws/**)",
+      "Read(~/.config/gh*/**)",
+      "Read(~/.netrc)",
+      "Read(~/.docker/config.json)",
+      "Read(~/.kube/**)",
+      "Read(~/.claude/.credentials.json)",
+      "Read(~/.claude.json)",
+      "Read(~/.codex/auth.json)",
+      "Read(~/.npmrc)",
+      "Read(~/.pypirc)",
       "Bash(sudo:*)"
     ]
   },
@@ -55,6 +64,10 @@
           {
             "type": "command",
             "command": "$HOME/.claude/hooks/session-context.sh"
+          },
+          {
+            "type": "command",
+            "command": "$HOME/.claude/hooks/identity-env.sh"
           }
         ]
       }
@@ -74,6 +87,14 @@
           {
             "type": "command",
             "command": "$HOME/.claude/hooks/gate-guard.sh"
+          },
+          {
+            "type": "command",
+            "command": "$HOME/.claude/hooks/identity-guard.sh"
+          },
+          {
+            "type": "command",
+            "command": "$HOME/.claude/hooks/secrets-shell-guard.sh"
           }
         ]
       }
@@ -95,6 +116,16 @@
           {
             "type": "command",
             "command": "$HOME/.claude/hooks/retro-nag.sh"
+          }
+        ]
+      }
+    ],
+    "CwdChanged": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.claude/hooks/identity-env.sh"
           }
         ]
       }
