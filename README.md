@@ -54,18 +54,28 @@ with a **deny list guarding the credential surface** (`.env*`, `~/.ssh`,
 `~/.aws`, `sudo`), the MCP allow-list this config relies on (Linear and Google
 Drive reads promptless; Drive writes and Linear project/milestone writes
 prompt-on-use so skill-level approval gates hold), `xhigh` effort, and the
-SessionStart/guardrail hooks below. It is **fully portable** — no
-machine-absolute paths and no machine-taste keys (model, theme, tui, voice,
-push-notifications live in `settings.local.json`, seeded by `install.sh`
-without overwriting), so the same tracked file works on every machine.
+SessionStart/guardrail hooks below, and `attribution` set to empty strings so
+Claude never adds Co-Authored-By / "Generated with" footers (the
+`attribution-veto` hook is the backstop). It is **fully portable** — no
+machine-absolute paths and no machine-taste keys — so the same tracked file
+works on every machine.
 
-The two values that *must* differ per machine — the plugin-marketplace path (the
-location of this clone) and the `~/.claude` access grant — are written by
-`install.sh` into `~/.claude/settings.local.json`, deep-merged so it never
-clobbers existing local overrides. They live there rather than in `settings.json`
-because `settings.json` does not expand `$HOME`/`~`
+Everything machine-specific lives in **`settings.local.json` next to it in this
+repo, gitignored**: the plugin-marketplace path (the location of this clone), the
+`~/.claude` access grant, and taste keys (model, theme, tui, outputStyle,
+ultracode, voice, push-notifications, …). `install.sh` seeds that file (deep-merge,
+never overwriting an existing value) and then writes the **real file**
+`~/.claude/settings.json` = deep-merge(`settings.json`, `settings.local.json`).
+Claude Code reads exactly five settings levels — managed, `--settings`,
+`<project>/.claude/settings.local.json`, `<project>/.claude/settings.json`, and
+`~/.claude/settings.json` — so a user-level `~/.claude/settings.local.json` is
+**not** read (earlier versions of this installer wrote there; the installer
+migrates that file once). Paths go in the local file because settings files do
+not expand `$HOME`/`~`
 ([anthropics/claude-code#4276](https://github.com/anthropics/claude-code/issues/4276)).
-Add any further machine-local overrides to that same (gitignored) file.
+To change a machine-local value, edit `settings.local.json` and re-run
+`./install.sh`; do not hand-edit `~/.claude/settings.json` — it is regenerated
+(and `/config` changes land there, so copy them into `settings.local.json`).
 
 ### `hooks/` — deterministic guardrails
 Six small, safe-by-default hook scripts (symlinked to `~/.claude/hooks/`):
@@ -281,20 +291,26 @@ profile alone.
 
 ## How It Works
 
-`install.sh` creates **symlinks** from `~/.claude/` into this repo:
+`install.sh` creates **symlinks** from `~/.claude/` into this repo for
+`CLAUDE.md`, `skills/` and `hooks/`, and writes `~/.claude/settings.json` as a
+merged real file (see `settings.json` above):
 
-- Edits to skills in the repo are reflected immediately — no re-install needed.
-- `git pull` on any machine updates everything.
+- Edits to skills, hooks and `CLAUDE.md` in the repo are reflected immediately —
+  no re-install needed. Edits to either settings file need `./install.sh`.
+- `git pull` on any machine updates everything (re-run `./install.sh` if
+  `settings.json` changed).
 - `install.sh` prunes dangling symlinks and backs up any real files it replaces.
-- `uninstall.sh` removes only the symlinks, leaving backups intact.
+- `uninstall.sh` removes only the symlinks, leaving backups and the merged
+  `~/.claude/settings.json` intact.
 
 ## File Structure
 
 ```
 claude-code-starter/
-├── install.sh              # symlinks everything into ~/.claude/
+├── install.sh              # symlinks skills/hooks/CLAUDE.md; merges settings into ~/.claude/settings.json
 ├── uninstall.sh            # removes the symlinks
-├── settings.json           # permissions, hooks, plugins (portable; no abs paths)
+├── settings.json           # permissions, hooks, plugins, attribution (portable; no abs paths)
+├── settings.local.json     # per-machine paths + taste keys (gitignored; created by install.sh)
 ├── CLAUDE.md               # global session context + pipeline conventions
 ├── hooks/                  # deterministic guardrails (see above)
 ├── .claude-plugin/
@@ -311,8 +327,9 @@ claude-code-starter/
 
 **Plugins on a new machine:** `install.sh` covers skills, hooks, settings, **and
 the marketplace registration** — it writes this clone's path into
-`~/.claude/settings.local.json`, so there's no `claude plugin marketplace add`
-step and nothing is machine-absolute in the tracked config. The tob-* security
+`settings.local.json` (merged into `~/.claude/settings.json`), so there's no
+`claude plugin marketplace add` step and nothing is machine-absolute in the
+tracked config. The tob-* security
 plugins still need a one-time install:
 
 ```bash

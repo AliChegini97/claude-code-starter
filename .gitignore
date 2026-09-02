@@ -17,3 +17,7 @@ skills/*/config.json
 
 # Editor / config backups
 *.bak-*
+
+# Per-machine settings (model, theme, marketplace path, home-dir grant) merged
+# into ~/.claude/settings.json by install.sh. Never commit.
+/settings.local.json
