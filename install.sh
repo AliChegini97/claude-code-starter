@@ -211,7 +211,7 @@ write_merged_settings() {
                 elif (x | type) == "array" and (y | type) == "array" then
                     (x + y) | unique
                 else y end;
-            deepmerge(.[0]; .[1])
+            .[0] as $a | .[1] as $b | deepmerge($a; $b)
         ' "$SCRIPT_DIR/settings.json" "$LOCAL_SETTINGS" > "$tmp" 2> /dev/null || { rm -f "$tmp"; return 1; }
     elif command -v python3 > /dev/null 2>&1; then
         TRACKED="$SCRIPT_DIR/settings.json" LOCAL="$LOCAL_SETTINGS" OUT="$tmp" python3 - <<'PY' || { rm -f "$tmp"; exit 1; }
