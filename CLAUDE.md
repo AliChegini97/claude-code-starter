@@ -1,5 +1,9 @@
 # Global Claude Code Configuration
 
+<!-- Machine-local rules kept outside this repo; the import is skipped on
+     machines where the file doesn't exist. -->
+@~/.claude/git-identity.md
+
 ## About the User
 
 <!-- Replace this with your own one-paragraph profile. It tells Claude who

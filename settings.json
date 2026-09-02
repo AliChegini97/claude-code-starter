@@ -104,7 +104,7 @@
     "pyright-lsp@claude-plugins-official": true,
     "superpowers@claude-plugins-official": true,
     "pr-review-toolkit@claude-plugins-official": true,
-    "explanatory-output-style@claude-plugins-official": true,
+    "explanatory-output-style@claude-plugins-official": false,
     "audit-context@claude-code-config": true,
     "differential-review@claude-code-config": true,
     "insecure-defaults@claude-code-config": true,
@@ -114,5 +114,9 @@
     "variant-analysis@claude-code-config": true
   },
   "effortLevel": "xhigh",
-  "skipWorkflowUsageWarning": true
+  "skipWorkflowUsageWarning": true,
+  "attribution": {
+    "commit": "",
+    "pr": ""
+  }
 }
