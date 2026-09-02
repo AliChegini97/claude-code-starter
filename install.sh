@@ -65,13 +65,26 @@ for skill_dir in "$SCRIPT_DIR/skills"/*/; do
     link_file "$skill_dir" "$CLAUDE_DIR/skills/$(basename "$skill_dir")"
 done
 
-echo "🪝 Installing hooks..."
-if compgen -G "$SCRIPT_DIR/hooks/*.sh" > /dev/null; then
-    mkdir -p "$CLAUDE_DIR/hooks"
-    prune_dangling "$CLAUDE_DIR/hooks"
-    for hook_file in "$SCRIPT_DIR/hooks"/*.sh; do
-        link_file "$hook_file" "$CLAUDE_DIR/hooks/$(basename "$hook_file")"
+echo "🪝 Hooks: registration lives in settings.json; scripts come from agent-hooks"
+# The hook SCRIPTS are not in this repo: settings.json registers
+# $HOME/.claude/hooks/<name>.sh, which ~/phd/agent-hooks/install.sh symlinks in
+# (one core per rule, shared with Cursor, parity-tested). Warn when one is missing.
+mkdir -p "$CLAUDE_DIR/hooks"
+prune_dangling "$CLAUDE_DIR/hooks"
+missing=0
+if command -v jq > /dev/null 2>&1; then
+    for cmd in $(jq -r '.hooks[][].hooks[].command' "$SCRIPT_DIR/settings.json" 2>/dev/null); do
+        path="${cmd/\$HOME/$HOME}"
+        if [ ! -e "$path" ]; then
+            echo "  ⚠ registered but not installed: $path"
+            missing=1
+        fi
     done
+fi
+if [ "$missing" = 0 ]; then
+    echo "  ✓ every registered hook script is installed"
+else
+    echo "  ➜ install them: ~/phd/agent-hooks/install.sh"
 fi
 
 # --- Agents (optional — only if the repo ships any) ---

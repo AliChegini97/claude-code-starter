@@ -77,37 +77,43 @@ To change a machine-local value, edit `settings.local.json` and re-run
 `./install.sh`; do not hand-edit `~/.claude/settings.json` — it is regenerated
 (and `/config` changes land there, so copy them into `settings.local.json`).
 
-### `hooks/` — deterministic guardrails
-Six small, safe-by-default hook scripts (symlinked to `~/.claude/hooks/`):
+### Hooks — deterministic guardrails (registered here, implemented in `agent-hooks`)
+`settings.json` registers six hooks by file name under `~/.claude/hooks/`. The
+scripts themselves live in the private `agent-hooks` repo (`~/phd/agent-hooks`):
+each rule is implemented **once** as a platform-agnostic core with a thin Claude
+Code adapter and a thin Cursor adapter, and a parity suite proves both editors
+decide identically. `~/phd/agent-hooks/install.sh` symlinks the adapters in;
+this installer warns when a registered script is missing.
 
 - **`attribution-veto.sh`** (PreToolUse: Bash, blocking) — denies `git commit`
-  / `gh pr create` whose text carries AI attribution (Co-Authored-By,
-  "Generated with", 🤖) — including inside files passed via
-  `-F`/`--file`/`--body-file`/`--template`. Enforces the no-attribution rule
-  deterministically.
+  / `gh pr create|edit` whose text carries AI attribution (Co-Authored-By
+  trailer, "Generated with <tool>", Cursor/Claude footers) — including inside
+  files passed via `-F`/`--file`/`--body-file`/`--template`. One marker list
+  for both editors. `settings.json` also sets `attribution` to empty so the
+  model is never told to add a footer; the hook is the backstop.
 - **`gate-guard.sh`** (PreToolUse: Bash, blocking) — on a branch with an
   active ship-issue plan (`.plans/<issue-id>.md`), denies `git push` /
   `gh pr create` until `.plans/<issue-id>.approved` exists — the SHIP GATE as
-  a mechanism, not prose. Inert outside a ship-issue run.
-- **`scratch-guard.sh`** (PreToolUse: Bash) — asks for confirmation (via hook
-  JSON the model actually sees) when a `git add` would stage `.plans/` or
-  `.review/`; honors `git -C`; keeps both dirs in `.git/info/exclude`.
+  a mechanism, not prose. Resolves the target repo from the command
+  (`git -C`, `cd` chains) and the agent's cwd, so worktrees are gated too.
+- **`scratch-guard.sh`** (PreToolUse: Bash) — asks for confirmation when a
+  `git add` would stage `.plans/` or `.review/`; keeps both dirs in the
+  shared `.git/info/exclude` (worktrees included).
 - **`format-fast-check.sh`** (PostToolUse: Edit/Write) — runs the repo's own
   formatter (ruff/black/prettier/rustfmt/gofmt) on the edited file only, plus
-  a fast lint; real lint findings are fed back to Claude (exit 2 — the edit
-  stands, the findings land in context); never imposes a formatter the repo
-  doesn't configure.
+  a fast lint; real findings are fed back to Claude (exit 2 — the edit
+  stands); a crashing linter is never reported as findings.
 - **`session-context.sh`** (SessionStart) — injects branch, behind-count vs
-  freshly-fetched `origin/main` (fetch capped at ~5s, startup only — skipped
-  on resume//clear), and dirty-file count — the fresh-base signal ship-issue
-  checks in Phase 0. Also installs the `.plans/`/`.review/` excludes.
+  freshly-fetched `origin/<default>` (fetch capped at ~5s, startup only), and
+  dirty-file count; on startup also a `[starter-drift]` line when this repo,
+  cursor-starter or agent-hooks is dirty. Installs the scratch excludes.
 - **`retro-nag.sh`** (Stop) — when a shipped issue (`.approved` marker
   present) has no `RETRO <issue>` line in `.review/journal.md`, blocks the
-  stop **once** with a reminder, then stays silent.
+  stop **once** with a reminder (once per issue across both editors).
 
-Every script exits 0 on any error, missing tool, or unexpected input — the
-only deliberate blocks are the attribution veto, the ship gate, the one-time
-retro reminder, and lint findings surfaced to the model.
+Every adapter allows on any internal error — the only deliberate blocks are
+the attribution veto, the ship gate, the one-time retro reminder, and lint
+findings surfaced to the model.
 
 ### `CLAUDE.md` — global context
 Loaded into every session: working environment, code standards, interaction
@@ -312,7 +318,7 @@ claude-code-starter/
 ├── settings.json           # permissions, hooks, plugins, attribution (portable; no abs paths)
 ├── settings.local.json     # per-machine paths + taste keys (gitignored; created by install.sh)
 ├── CLAUDE.md               # global session context + pipeline conventions
-├── hooks/                  # deterministic guardrails (see above)
+│                           # (hook scripts: ~/phd/agent-hooks — registered in settings.json)
 ├── .claude-plugin/
 │   └── marketplace.json    # local marketplace serving the tob-* plugins
 ├── codex/
