@@ -95,6 +95,10 @@
           {
             "type": "command",
             "command": "$HOME/.claude/hooks/secrets-shell-guard.sh"
+          },
+          {
+            "type": "command",
+            "command": "$HOME/.claude/hooks/worktree-guard.sh"
           }
         ]
       }
