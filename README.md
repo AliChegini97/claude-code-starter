@@ -15,10 +15,6 @@ machine-specific lives in a gitignored `settings.local.json`. The one thing to
 customize on a new machine is the "About the User" block in
 [`CLAUDE.md`](CLAUDE.md).
 
-Clone it under `~/phd/`: on this machine git and `gh` identity follow the
-repo's tree (`~/.claude/git-identity.md`), and a clone anywhere else cannot
-commit.
-
 > **This repo ships no hook scripts.** `settings.json` registers ten hooks by
 > path under `~/.claude/hooks/`, but the scripts come from the separate,
 > private [`agent-hooks`](https://github.com/AliChegini97/agent-hooks) repo —
@@ -55,7 +51,7 @@ npm install -g @anthropic-ai/claude-code
 #    (install per OpenAI's instructions, then authenticate)
 codex login
 
-# 3. Clone and install this config (under ~/phd — identity follows the tree)
+# 3. Clone and install this config (the ~/phd/ paths below are the convention, not a requirement)
 git clone git@github.com:AliChegini97/claude-code-starter.git ~/phd/claude-code-starter
 cd ~/phd/claude-code-starter && ./install.sh
 
