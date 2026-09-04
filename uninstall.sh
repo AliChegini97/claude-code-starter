@@ -28,11 +28,8 @@ for skill_dir in "$SCRIPT_DIR/skills"/*/; do
     remove_if_symlink "$CLAUDE_DIR/skills/$(basename "$skill_dir")"
 done
 
-# Remove hook symlinks this repo created.
-for hook_file in "$SCRIPT_DIR/hooks"/*.sh; do
-    [ -f "$hook_file" ] || continue
-    remove_if_symlink "$CLAUDE_DIR/hooks/$(basename "$hook_file")"
-done
+# Hook symlinks under ~/.claude/hooks are not ours: settings.json only registers
+# them; ~/phd/agent-hooks/install.sh creates them and its uninstall.sh removes them.
 
 # Remove a symlink for every agent this repo ships (if any).
 if compgen -G "$SCRIPT_DIR/agents/*.md" > /dev/null; then

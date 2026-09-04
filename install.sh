@@ -3,7 +3,9 @@ set -euo pipefail
 
 # ============================================================================
 # Claude Code Config Installer
-# Symlinks config files from this repo into ~/.claude/
+# Symlinks CLAUDE.md and skills/ from this repo into ~/.claude/ and writes the
+# merged ~/.claude/settings.json. Hook scripts are NOT in this repo: settings.json
+# registers them and ~/phd/agent-hooks/install.sh links them in (checked below).
 # Safe to re-run — backs up existing non-symlink files before replacing.
 # ============================================================================
 

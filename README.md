@@ -5,9 +5,19 @@ context, a curated skill library, and a Codex-backed development pipeline. Clone
 this repo on any machine, run `install.sh`, and Claude Code is ready with the
 full setup.
 
-This is a **starter** — fork it, make it yours. The one thing to customize
-before you start is the "About the User" block in [`CLAUDE.md`](CLAUDE.md)
-(a one-paragraph profile of you); everything else works out of the box.
+This is Ali's fork of
+[AidenSbVevo/claude-code-starter](https://github.com/AidenSbVevo/claude-code-starter)
+(kept as the `upstream` remote). What differs from upstream: the hook *scripts*
+moved to the private `agent-hooks` repo (one core per rule, shared with Cursor,
+parity-tested) so this repo only registers them; `attribution` is suppressed;
+`CLAUDE.md` imports a machine-local `git-identity.md`; and everything
+machine-specific lives in a gitignored `settings.local.json`. The one thing to
+customize on a new machine is the "About the User" block in
+[`CLAUDE.md`](CLAUDE.md).
+
+Clone it under `~/phd/`: on this machine git and `gh` identity follow the
+repo's tree (`~/.claude/git-identity.md`), and a clone anywhere else cannot
+commit.
 
 **Contents:** [Quick Start](#quick-start) ·
 [New Machine Setup](#new-machine-setup) ·
@@ -20,10 +30,11 @@ before you start is the "About the User" block in [`CLAUDE.md`](CLAUDE.md)
 ## Quick Start
 
 ```bash
-git clone https://github.com/AidenSbVevo/claude-code-starter.git ~/.claude-code-starter
-cd ~/.claude-code-starter
-./install.sh          # creates symlinks into ~/.claude/
-claude                # launch — everything is loaded
+git clone git@github.com:AliChegini97/claude-code-starter.git ~/phd/claude-code-starter
+cd ~/phd/claude-code-starter
+./install.sh                  # links CLAUDE.md + skills into ~/.claude/, writes the merged settings.json
+~/phd/agent-hooks/install.sh  # links the hook scripts that settings.json registers
+claude                        # launch — everything is loaded
 ```
 
 ## New Machine Setup
@@ -36,9 +47,13 @@ npm install -g @anthropic-ai/claude-code
 #    (install per OpenAI's instructions, then authenticate)
 codex login
 
-# 3. Clone and install this config
-git clone https://github.com/AidenSbVevo/claude-code-starter.git ~/.claude-code-starter
-cd ~/.claude-code-starter && ./install.sh
+# 3. Clone and install this config (under ~/phd — identity follows the tree)
+git clone git@github.com:AliChegini97/claude-code-starter.git ~/phd/claude-code-starter
+cd ~/phd/claude-code-starter && ./install.sh
+
+# 4. Hook scripts (private repo; settings.json only registers them)
+git clone git@github.com:AliChegini97/agent-hooks.git ~/phd/agent-hooks
+~/phd/agent-hooks/install.sh   # also seeds ~/.config/agent-identity.env
 ```
 
 The pipeline **degrades gracefully** without Codex — cross-review falls back to
@@ -50,8 +65,11 @@ is optional if you don't use the Linear-driven flow.
 
 ### `settings.json` — permissions, hooks, plugins
 Full tool permissions (Bash/Read/Write/Edit/Glob/Grep/WebFetch/WebSearch/Task)
-with a **deny list guarding the credential surface** (`.env*`, `~/.ssh`,
-`~/.aws`, `sudo`), the MCP allow-list this config relies on (Linear and Google
+with a **deny list guarding the credential surface** — `Read(...)` rules for
+the `agent-hooks` secret-path list (`.env*`, `~/.ssh`, `~/.aws`, `~/.config/gh*`,
+`~/.kube`, the token files), an `Edit(...)` mirror for the same stores plus
+`~/.gitconfig` and its per-tree fragments, and `Bash(sudo:*)`; regenerate from
+`agent-hooks/docs/secret-paths-claude.md` — the MCP allow-list this config relies on (Linear and Google
 Drive reads promptless; Drive writes and Linear project/milestone writes
 prompt-on-use so skill-level approval gates hold), `xhigh` effort, and the
 SessionStart/guardrail hooks below, and `attribution` set to empty strings so
@@ -78,13 +96,24 @@ To change a machine-local value, edit `settings.local.json` and re-run
 (and `/config` changes land there, so copy them into `settings.local.json`).
 
 ### Hooks — deterministic guardrails (registered here, implemented in `agent-hooks`)
-`settings.json` registers six hooks by file name under `~/.claude/hooks/`. The
-scripts themselves live in the private `agent-hooks` repo (`~/phd/agent-hooks`):
-each rule is implemented **once** as a platform-agnostic core with a thin Claude
+`settings.json` registers ten hook scripts by file name under `~/.claude/hooks/`.
+The scripts live in the private `agent-hooks` repo (`~/phd/agent-hooks`): each
+rule is implemented **once** as a platform-agnostic core with a thin Claude
 Code adapter and a thin Cursor adapter, and a parity suite proves both editors
 decide identically. `~/phd/agent-hooks/install.sh` symlinks the adapters in;
-this installer warns when a registered script is missing.
+this installer only warns when a registered script is missing. The identity
+hooks read the machine's tree→identity mapping from
+`~/.config/agent-identity.env` (outside every repo, never committed) and no-op
+where it is absent, so the registration itself stays portable.
 
+- **`session-context.sh`** (SessionStart) — injects branch, behind-count vs
+  freshly-fetched `origin/<default>` (fetch capped at ~5s, startup only), and
+  dirty-file count; on startup also a `[starter-drift]` line when this repo,
+  cursor-starter or agent-hooks is dirty. Installs the scratch excludes.
+- **`identity-env.sh`** (SessionStart + CwdChanged) — writes the current
+  tree's `GH_CONFIG_DIR` into `CLAUDE_ENV_FILE`, so plain `gh` inside `~/phd`
+  or `~/work` uses that tree's login; leaving both trees clears it (`gh` is
+  logged out there by design).
 - **`attribution-veto.sh`** (PreToolUse: Bash, blocking) — denies `git commit`
   / `gh pr create|edit` whose text carries AI attribution (Co-Authored-By
   trailer, "Generated with <tool>", Cursor/Claude footers) — including inside
@@ -99,21 +128,31 @@ this installer warns when a registered script is missing.
 - **`scratch-guard.sh`** (PreToolUse: Bash) — asks for confirmation when a
   `git add` would stage `.plans/` or `.review/`; keeps both dirs in the
   shared `.git/info/exclude` (worktrees included).
+- **`identity-guard.sh`** (PreToolUse: Bash, blocking) — denies
+  `gh auth login|switch|setup-git|token`, identity-config writes
+  (`git config user.*`, `-c user.*`, `--author`, `GIT_AUTHOR_*`, `GH_TOKEN=`),
+  HTTPS GitHub remotes, the other tree's identity files, and `direnv exec`
+  into another tree. Read forms (`git config user.email`) stay allowed.
+- **`secrets-shell-guard.sh`** (PreToolUse: Bash, blocking) — the shell twin
+  of the `Read(...)` deny list: command tokens under a secret path, `sudo`,
+  keychain readers; `.env*` asks instead of denying.
+- **`worktree-guard.sh`** (PreToolUse: Bash, blocking) — `git worktree add`
+  must stay in the repo's identity tree and `git clone` in the session's tree
+  (never `/tmp`, never `~/.cursor`).
 - **`format-fast-check.sh`** (PostToolUse: Edit/Write) — runs the repo's own
   formatter (ruff/black/prettier/rustfmt/gofmt) on the edited file only, plus
   a fast lint; real findings are fed back to Claude (exit 2 — the edit
   stands); a crashing linter is never reported as findings.
-- **`session-context.sh`** (SessionStart) — injects branch, behind-count vs
-  freshly-fetched `origin/<default>` (fetch capped at ~5s, startup only), and
-  dirty-file count; on startup also a `[starter-drift]` line when this repo,
-  cursor-starter or agent-hooks is dirty. Installs the scratch excludes.
 - **`retro-nag.sh`** (Stop) — when a shipped issue (`.approved` marker
   present) has no `RETRO <issue>` line in `.review/journal.md`, blocks the
   stop **once** with a reminder (once per issue across both editors).
 
-Every adapter allows on any internal error — the only deliberate blocks are
-the attribution veto, the ship gate, the one-time retro reminder, and lint
-findings surfaced to the model.
+Every adapter allows on any internal error. The deliberate blocks are the
+attribution veto, the ship gate, the identity / secrets / worktree denies, the
+one-time retro reminder, and lint findings surfaced to the model. Cursor gets
+the same rules from `~/.cursor/hooks.json` (cursor-starter), plus a
+`tool-path-guard` for its editor and search tools; Claude covers that surface
+with the `Read(...)`/`Edit(...)` deny rules instead.
 
 ### `CLAUDE.md` — global context
 Loaded into every session: working environment, code standards, interaction
@@ -298,11 +337,13 @@ profile alone.
 ## How It Works
 
 `install.sh` creates **symlinks** from `~/.claude/` into this repo for
-`CLAUDE.md`, `skills/` and `hooks/`, and writes `~/.claude/settings.json` as a
-merged real file (see `settings.json` above):
+`CLAUDE.md` and `skills/`, and writes `~/.claude/settings.json` as a merged
+real file (see `settings.json` above). Hook scripts are linked into
+`~/.claude/hooks/` by `agent-hooks/install.sh`, not by this repo:
 
-- Edits to skills, hooks and `CLAUDE.md` in the repo are reflected immediately —
-  no re-install needed. Edits to either settings file need `./install.sh`.
+- Edits to skills and `CLAUDE.md` in the repo are reflected immediately — no
+  re-install needed. Edits to either settings file need `./install.sh`; hook
+  behaviour changes happen in `agent-hooks` (run its parity suite there).
 - `git pull` on any machine updates everything (re-run `./install.sh` if
   `settings.json` changed).
 - `install.sh` prunes dangling symlinks and backs up any real files it replaces.
@@ -313,8 +354,8 @@ merged real file (see `settings.json` above):
 
 ```
 claude-code-starter/
-├── install.sh              # symlinks skills/hooks/CLAUDE.md; merges settings into ~/.claude/settings.json
-├── uninstall.sh            # removes the symlinks
+├── install.sh              # symlinks skills/CLAUDE.md; merges settings into ~/.claude/settings.json; checks registered hooks exist
+├── uninstall.sh            # removes the symlinks (hook links: agent-hooks/uninstall.sh)
 ├── settings.json           # permissions, hooks, plugins, attribution (portable; no abs paths)
 ├── settings.local.json     # per-machine paths + taste keys (gitignored; created by install.sh)
 ├── CLAUDE.md               # global session context + pipeline conventions
@@ -331,8 +372,8 @@ claude-code-starter/
     └── skill-creator/ mcp-builder/ claude-api/ pdf/
 ```
 
-**Plugins on a new machine:** `install.sh` covers skills, hooks, settings, **and
-the marketplace registration** — it writes this clone's path into
+**Plugins on a new machine:** `install.sh` covers skills, settings, the
+hook-registration check, **and the marketplace registration** — it writes this clone's path into
 `settings.local.json` (merged into `~/.claude/settings.json`), so there's no
 `claude plugin marketplace add` step and nothing is machine-absolute in the
 tracked config. The tob-* security
@@ -360,5 +401,6 @@ project — gitignored, and it overrides these globals for that project only.
 ## Uninstall
 
 ```bash
-cd ~/.claude-code-starter && ./uninstall.sh
+cd ~/phd/claude-code-starter && ./uninstall.sh   # this repo's symlinks + nothing else
+~/phd/agent-hooks/uninstall.sh                   # the hook symlinks, if wanted
 ```
