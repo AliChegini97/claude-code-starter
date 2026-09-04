@@ -19,6 +19,14 @@ Clone it under `~/phd/`: on this machine git and `gh` identity follow the
 repo's tree (`~/.claude/git-identity.md`), and a clone anywhere else cannot
 commit.
 
+> **This repo ships no hook scripts.** `settings.json` registers ten hooks by
+> path under `~/.claude/hooks/`, but the scripts come from the separate,
+> private [`agent-hooks`](https://github.com/AliChegini97/agent-hooks) repo —
+> clone it to `~/phd/agent-hooks` and run its `install.sh` (step 4 below).
+> Until you do, `install.sh` here prints "registered but not installed" for
+> each one and Claude Code treats every missing script as a non-blocking hook
+> error: tools still run, the guardrails are simply absent.
+
 **Contents:** [Quick Start](#quick-start) ·
 [New Machine Setup](#new-machine-setup) ·
 [What's Included](#whats-included) ·
@@ -95,7 +103,7 @@ To change a machine-local value, edit `settings.local.json` and re-run
 `./install.sh`; do not hand-edit `~/.claude/settings.json` — it is regenerated
 (and `/config` changes land there, so copy them into `settings.local.json`).
 
-### Hooks — deterministic guardrails (registered here, implemented in `agent-hooks`)
+### Hooks — registered here, implemented in `agent-hooks` (no scripts in this repo)
 `settings.json` registers ten hook scripts by file name under `~/.claude/hooks/`.
 The scripts live in the private `agent-hooks` repo (`~/phd/agent-hooks`): each
 rule is implemented **once** as a platform-agnostic core with a thin Claude
