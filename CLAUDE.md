@@ -95,6 +95,10 @@ Standing conventions (a repo `CLAUDE.md` overrides these where it speaks):
 - **Debugging:** any bug or unexpected behavior → `superpowers:systematic-debugging`
   first; root cause before any fix. Then linear-issues to file it, and
   ship-issue (anchorless mode when there's no ticket) to fix it.
+- **Security-guard / parser changes:** add an adversarial fixture / differential-fuzz
+  review pass (build real inputs, diff old-vs-new behavior over a shape grid), not only
+  code-reading review — decorrelated code review has repeatedly MISSED guard bypasses
+  (fail-opens, detection/contract gaps) that fixture-fuzzing caught.
 - **Rule home:** this global CLAUDE.md is the single home for standing rules
   promoted by ship-issue retros — skills reference it rather than restating it.
 - **Infra:** never delete or provision infrastructure yourself — specify
